@@ -97,3 +97,117 @@ class CyberbullyingDetectionEngine:
             'recall': recall,
             'f1': (2 * precision * recall) / (precision + recall)
         }
+    def load_corpus(self, path, corpus_col, tag_col):
+        """ Takes in a path to a pickled pandas dataframe, the name of the corpus column,
+            and the name of the tag column, and extracts a tagged corpus
+        """
+        data = pandas.read_pickle(path)[[corpus_col, tag_col]].values
+        self.corpus = [row[0] for row in data]
+        self.tags = [row[1] for row in data]
+
+    def load_lexicon(self, fname):
+        """ Loads a set of words from a txt file
+        """
+        if self.lexicons is None:
+            self.lexicons = {}
+        
+        self.lexicons[fname] = self._get_lexicon('./data/' + fname + '.txt')
+        
+    def load_model(self, model_name):
+        """ Loads a ML model, it's corresponding feature vectorizer, and it's performance metrics
+        """
+        self.model = pickle.load(open('./models/' + model_name + '_ml_model.pkl', 'rb'))
+        self.vectorizer = pickle.load(open('./models/' + model_name + '_vectorizer.pkl', 'rb'))
+        self.metrics = pickle.load(open('./models/' + model_name + '_metrics.pkl', 'rb'))
+    
+    def train_using_bow(self):
+        """ Trains a model using Bag of Words on the loaded corpus and tags
+        """
+        corpus = self._simplify(self.corpus)
+        self.vectorizer = CountVectorizer()
+        self.vectorizer.fit(corpus)
+
+        bag_of_words = self.vectorizer.transform(corpus)
+        x_train, x_test, y_train, y_test = train_test_split(bag_of_words, self.tags, test_size=0.2, stratify=self.tags)
+
+        self.model = MultinomialNB()
+        self.model.fit(x_train, y_train)
+
+        self.metrics = self._model_metrics(x_test, y_test)
+
+    def train_using_tfidf(self):
+        """ Trains a model using tf-idf weighted word counts as features
+        """
+        corpus = self._simplify(self.corpus)
+        self.vectorizer = TfidfVectorizer()
+        self.vectorizer.fit(corpus)
+
+        word_vectors = self.vectorizer.transform(corpus)
+        x_train, x_test, y_train, y_test = train_test_split(word_vectors, self.tags, test_size=0.2, stratify=self.tags)
+
+        self.model = MultinomialNB()
+        self.model.fit(x_train, y_train)
+
+        self.metrics = self._model_metrics(x_test, y_test)
+
+    def train_using_custom(self):
+        """ Trains model using a custom feature extraction approach
+        """
+        corpus = self._simplify(self.corpus)
+        self.vectorizer = self.CustomVectorizer(self.lexicons)
+        
+        word_vectors = self.vectorizer.transform(corpus)
+        x_train, x_test, y_train, y_test = train_test_split(word_vectors, self.tags, test_size=0.2, stratify=self.tags)
+
+        self.model = SVC()
+        self.model.fit(x_train, y_train)
+
+        self.metrics = self._model_metrics(x_test, y_test)
+
+    def evaluate(self):
+        """ Returns a dictionary of model performance metrics
+        """
+        return self.metrics
+
+    def save_model(self, model_name):
+        """ Saves the model for future use
+        """
+        pickle.dump(self.model, open('./models/' + model_name + '_ml_model.pkl', 'wb'))
+        pickle.dump(self.vectorizer, open('./models/' + model_name + '_vectorizer.pkl', 'wb'))
+        pickle.dump(self.metrics, open('./models/' + model_name + '_metrics.pkl', 'wb'))
+
+    def predict(self, corpus):
+        """ Takes in a text corpus and returns predictions
+        """
+        x = self.vectorizer.transform(self._simplify(corpus))
+        return self.model.predict(x)
+if __name__ == '__main__':
+    reddit = praw.Reddit(
+        client_id = '_PDapQT34TIHdw',
+        client_secret = 'oUOWExgYtn_UWJ1G0AFd5ptJ984',
+        user_agent = 'script_name by /u/bradprk' 
+    )
+
+    new_comments = reddit.subreddit('mademesmile').comments(limit=1000)
+    queries = [comment.body for comment in new_comments]
+
+    engine = CyberbullyingDetectionEngine()
+    engine.load_corpus('./data/final_labelled_data.pkl', 'tweet', 'class')
+
+    engine.load_lexicon('hate-words')
+    engine.load_lexicon('neg-words')
+    engine.load_lexicon('pos-words')
+    engine.load_lexicon('second_person_words')
+    engine.load_lexicon('third_person_words')
+    engine.load_model('bow')
+    print(engine.evaluate())
+    print(engine.predict(queries))
+
+    engine.load_model('tfidf')
+    print(engine.evaluate())
+    print(engine.predict(queries))
+
+    engine.load_model('custom')
+    print(engine.evaluate())
+    print(engine.predict(queries))
+        
