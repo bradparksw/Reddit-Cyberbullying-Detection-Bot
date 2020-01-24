@@ -18,17 +18,17 @@ To get a local copy up and running follow these simple example steps.
 ### Prerequisites
 
 List of prerequisites you need to use the software and how to install them.
-* npm
+* pip install
 ```sh
-pip install NLTK```
+pip install NLTK
+```
 
 * NLTK
 Open up a Python shell and type the following:
 ```sh
 import nltk
 nltk.download('stopwords'
-nltk.download('punkt"
-```
+nltk.download('punkt')```
 
 <!-- USAGE EXAMPLES -->
 ## Usage
