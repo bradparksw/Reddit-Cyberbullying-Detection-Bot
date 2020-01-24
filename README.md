@@ -35,7 +35,8 @@ nltk.download('punkt')```
 
 Open up a command line and type the following:
 ```sh
-python cyberbullying_detection.py```
+python cyberbullying_detection.py
+```
 
 
 <!-- CONTRIBUTING -->
