@@ -28,9 +28,9 @@ Open up a Python shell and type the following:
 ```sh
 import nltk
 nltk.download('stopwords'
-nltk.download('punkt')```
+nltk.download('punkt')
+```
 
-<!-- USAGE EXAMPLES -->
 ## Usage
 
 Open up a command line and type the following:
